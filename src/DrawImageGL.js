@@ -464,6 +464,12 @@
         return program;
     }
 
-    exports.DrawImageGL = DrawImageGL;
+    if (exports) {
+        exports.DrawImageGL = DrawImageGL;
+    }
+
+    if (typeof module !== "undefined") {
+        module.exports = DrawImageGL;
+    }
 
 })(typeof window !== 'undefined' ? window : typeof process === 'object' && typeof require === 'function' && typeof global === 'object' ? global : this);

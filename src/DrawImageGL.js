@@ -157,7 +157,7 @@
             return false;
         },
 
-        createTexture: function(img) {
+        createTexture: function (img, premultiplyAlpha) {
             let tex = this.texCache[img.src];
             if (tex) {
                 return tex;
@@ -167,6 +167,9 @@
 
             tex = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, tex);
+
+            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiplyAlpha || false);
+
             // Fill the texture with a 1x1 blue pixel.
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
 
@@ -194,7 +197,7 @@
 
         drawImage: function(img, srcX, srcY, srcWidth, srcHeight, dstX, dstY, dstWidth, dstHeight) {
 
-            const tex = this.createTexture(img);
+            const tex = this.createTexture(img, img.premultiplyAlpha);
             const program = this.program;
 
             const args = arguments;

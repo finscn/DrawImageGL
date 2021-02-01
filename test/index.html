@@ -1,0 +1,43 @@
+<!-- Licensed under a BSD license. See license.html for license -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>DrawImage with WebGL</title>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+</body>
+
+<script src="../src/DrawImageGL.js"></script>
+<script>
+
+    var canvas = document.querySelector("#canvas");
+    canvas.width = 600
+    canvas.height = 400
+
+    const drawGL = new DrawImageGL(canvas)
+
+    let loaded = false
+    const img = new Image();
+    img.src='star.jpg';
+    img.onload = function(){
+        // 240, 180
+        console.log("img size: ", img.width, img.height);
+        loaded = true;
+    }
+
+    function render(time) {
+        drawGL.clear([1, 0.5, 0.5, 3])
+        if (loaded){
+            drawGL.drawImage(img,10, 10);
+            drawGL.drawImage(img, 300, 10, 100, 100);
+            drawGL.drawImage(img, 120, 90,  120, 90, 300, 200, 50, 50);
+        }
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+</script>
+</html>

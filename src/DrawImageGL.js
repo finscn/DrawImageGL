@@ -155,6 +155,7 @@
             gl.blendFunc(BLEND_SRC_ALPHA, BLEND_ONE_MINUS_SRC_ALPHA);
             gl.blendEquation(gl.FUNC_ADD);
 
+            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
         },
 
         resizeCanvas: function (width, height) {
@@ -167,7 +168,7 @@
             return false;
         },
 
-        createTexture: function (img, premultiplyAlpha) {
+        createTexture: function (img) {
             let tex = this.texCache[img.src];
             if (tex) {
                 return tex;
@@ -176,16 +177,14 @@
             const gl = this.gl;
 
             tex = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, tex);
 
-            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiplyAlpha || false);
+            gl.bindTexture(gl.TEXTURE_2D, tex);
 
             // let's assume all images are not a power of 2
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
-            gl.bindTexture(gl.TEXTURE_2D, tex);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 
             this.texCache[img.src] = tex;
@@ -204,7 +203,7 @@
 
         drawImage: function (img, srcX, srcY, srcWidth, srcHeight, dstX, dstY, dstWidth, dstHeight) {
 
-            const tex = this.createTexture(img, img.premultiplyAlpha);
+            const tex = this.createTexture(img);
             const program = this.program;
 
             const alpha = img.alpha === 0 || img.alpha ? img.alpha : 1;

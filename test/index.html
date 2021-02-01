@@ -19,21 +19,33 @@
 
     const drawGL = new DrawImageGL(canvas)
 
-    let loaded = false
+    let loaded = 0
     const img = new Image();
-    img.src='star.jpg';
-    img.onload = function(){
-        // 240, 180
+    img.src = 'HTML5_Logo_128.png';
+    img.onload = function() {
+        // 128, 128
         console.log("img size: ", img.width, img.height);
-        loaded = true;
+        loaded++;
+    }
+    const img2 = new Image();
+    img2.src = 'star.jpg';
+    img2.onload = function() {
+        // 240, 180
+        console.log("img2 size: ", img2.width, img2.height);
+        loaded++;
     }
 
     function render(time) {
-        drawGL.clear([1, 0.5, 0.5, 3])
-        if (loaded){
-            drawGL.drawImage(img,10, 10);
+        drawGL.clear([1, 0.5, 0.5, 1])
+        if (loaded === 2){
+            img.alpha = 1
+            drawGL.drawImage(img, 10, 10);
             drawGL.drawImage(img, 300, 10, 100, 100);
-            drawGL.drawImage(img, 120, 90,  120, 90, 300, 200, 50, 50);
+            img.alpha = 0.2
+            drawGL.drawImage(img, 64, 30,  60, 80, 300, 160, 200, 200);
+
+            img2.alpha = 0.5
+            drawGL.drawImage(img2, 10, 200);
         }
         requestAnimationFrame(render);
     }

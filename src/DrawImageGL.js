@@ -1,6 +1,6 @@
 "use strict";
 
-(function(exports) {
+(function (exports) {
 
     const vertexShader = `
     attribute vec4 a_position;
@@ -17,28 +17,29 @@
     `;
 
     const fragmentShader = `
-    precision mediump float;
+    precision highp float;
 
     varying vec2 v_texcoord;
 
     uniform sampler2D u_texture;
+    uniform float u_alpha;
 
     void main() {
-     gl_FragColor = texture2D(u_texture, v_texcoord);
+     vec4 color = texture2D(u_texture, v_texcoord);
+     color.a *= u_alpha;
+     gl_FragColor = color;
     }
     `;
 
-    const ShaderType = {
-        VERTEX_SHADER: 'VERTEX_SHADER',
-        FRAGMENT_SHADER: 'FRAGMENT_SHADER',
-    };
+    const BLEND_SRC_ALPHA = 0x0302;
+    const BLEND_ONE_MINUS_SRC_ALPHA = 0x0303;
 
     const Mat4Type = Float32Array;
 
     var tempMat0 = new Mat4Type(16)
     var tempMat1 = new Mat4Type(16)
 
-    var DrawImageGL = function(canvas, options) {
+    var DrawImageGL = function (canvas, options) {
         this.texCache = {}
         if (canvas) {
             this.init(canvas, options);
@@ -61,10 +62,11 @@
         matrixLocation: null,
         textureMatrixLocation: null,
         textureLocation: null,
+        alphaLocation: null,
 
         texCache: null,
 
-        destroy: function() {
+        destroy: function () {
             this.texCache = null;
             this.canvas = null;
             this.gl = null;
@@ -79,16 +81,17 @@
             this.matrixLocation = null;
             this.textureMatrixLocation = null;
             this.textureLocation = null;
+            this.alphaLocation = null;
         },
 
-        init: function(canvas, options) {
+        init: function (canvas, options) {
             let gl;
 
             options = Object.assign({
-                alpha: false,
-                stencil: true,
-                depth: true,
-                antialias: false,
+                alpha: true,
+                stencil: false,
+                depth: false,
+                antialias: true,
                 preserveDrawingBuffer: false,
 
                 vertexShader: vertexShader,
@@ -117,9 +120,9 @@
         },
 
         initContext(gl, vertexShader, fragmentShader) {
-            vertexShader = vertexShader || this.vertexShader
-            fragmentShader = fragmentShader || this.fragmentShader
-                // setup GLSL program
+            vertexShader = vertexShader || this.vertexShader;
+            fragmentShader = fragmentShader || this.fragmentShader;
+            // setup GLSL program
             this.program = createProgramFromSources(gl, vertexShader, fragmentShader)
             const program = this.program;
 
@@ -130,6 +133,7 @@
             this.matrixLocation = gl.getUniformLocation(program, "u_matrix");
             this.textureMatrixLocation = gl.getUniformLocation(program, "u_textureMatrix");
             this.textureLocation = gl.getUniformLocation(program, "u_texture");
+            this.alphaLocation = gl.getUniformLocation(program, "u_alpha");
 
             // Create a buffer.
             this.positionBuffer = gl.createBuffer();
@@ -143,11 +147,17 @@
                 1, 0,
                 0, 1,
                 1, 1,
-            ])
+            ]);
+
             gl.bufferData(gl.ARRAY_BUFFER, this.positions, gl.STATIC_DRAW);
+
+            gl.enable(gl.BLEND);
+            gl.blendFunc(BLEND_SRC_ALPHA, BLEND_ONE_MINUS_SRC_ALPHA);
+            gl.blendEquation(gl.FUNC_ADD);
+
         },
 
-        resizeCanvas: function(width, height) {
+        resizeCanvas: function (width, height) {
             const canvas = this.canvas;
             if (canvas.width !== width || canvas.height !== height) {
                 canvas.width = width;
@@ -170,9 +180,6 @@
 
             gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiplyAlpha || false);
 
-            // Fill the texture with a 1x1 blue pixel.
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
-
             // let's assume all images are not a power of 2
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -186,7 +193,7 @@
             return tex;
         },
 
-        clear: function(color) {
+        clear: function (color) {
             let flags = 0;
             if (color !== undefined) {
                 flags |= this.gl.COLOR_BUFFER_BIT;
@@ -195,16 +202,18 @@
             this.gl.clear(flags);
         },
 
-        drawImage: function(img, srcX, srcY, srcWidth, srcHeight, dstX, dstY, dstWidth, dstHeight) {
+        drawImage: function (img, srcX, srcY, srcWidth, srcHeight, dstX, dstY, dstWidth, dstHeight) {
 
             const tex = this.createTexture(img, img.premultiplyAlpha);
             const program = this.program;
 
+            const alpha = img.alpha === 0 || img.alpha ? img.alpha : 1;
+
             const args = arguments;
             const argCount = args.length;
 
-            const texWidth = img.width
-            const texHeight = img.height
+            const texWidth = img.width;
+            const texHeight = img.height;
 
             if (argCount === 3) {
                 dstX = srcX;
@@ -244,14 +253,14 @@
             gl.vertexAttribPointer(this.positionLocation, 2, gl.FLOAT, false, 0, 0);
 
             // this matrix will convert from pixels to clip space
-            let matrix = Mat4Orthographic(0, gl.canvas.width, gl.canvas.height, 0, -1, 1, tempMat0);
+            let matrix = Mat4Orthographic(0, canvas.width, canvas.height, 0, -1, 1, tempMat0);
 
             // this matrix will translate our quad to dstX, dstY
-            matrix = Mat4Translate(matrix, dstX, dstY, 0, tempMat1);
+            Mat4Translate(matrix, dstX, dstY, 0, matrix);
 
             // this matrix will scale our 1 unit quad
             // from 1 unit to texWidth, texHeight units
-            matrix = Mat4Scale(matrix, dstWidth, dstHeight, 1, tempMat0);
+            Mat4Scale(matrix, dstWidth, dstHeight, 1, matrix);
 
             // Set the matrix.
             gl.uniformMatrix4fv(this.matrixLocation, false, matrix);
@@ -262,7 +271,7 @@
             // down
             let texMatrix = Mat4Translation(srcX / texWidth, srcY / texHeight, 0, tempMat1);
             if (srcWidth !== texWidth || srcHeight !== texHeight) {
-                texMatrix = Mat4Scale(texMatrix, srcWidth / texWidth, srcHeight / texHeight, 1, tempMat0);
+                Mat4Scale(texMatrix, srcWidth / texWidth, srcHeight / texHeight, 1, texMatrix);
             }
 
             // Set the texture matrix.
@@ -270,6 +279,7 @@
 
             // Tell the shader to get the texture from texture unit 0
             gl.uniform1i(this.textureLocation, 0);
+            gl.uniform1f(this.alphaLocation, alpha);
 
             // draw the quad (2 triangles, 6 vertices)
             gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -280,6 +290,7 @@
     for (let p in proto) {
         DrawImageGL.prototype[p] = proto[p];
     }
+
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
@@ -411,7 +422,6 @@
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
 
-
     function createProgramFromSources(gl, vertexShader, fragmentShader, opt_attribs, opt_locations) {
         const vs = loadShader(gl, vertexShader, gl.VERTEX_SHADER)
         const fs = loadShader(gl, fragmentShader, gl.FRAGMENT_SHADER)
@@ -445,7 +455,7 @@
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
         if (opt_attribs) {
-            opt_attribs.forEach(function(attrib, ndx) {
+            opt_attribs.forEach(function (attrib, ndx) {
                 gl.bindAttribLocation(
                     program,
                     opt_locations ? opt_locations[ndx] : ndx,

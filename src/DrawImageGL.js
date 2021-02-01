@@ -88,10 +88,10 @@
             let gl;
 
             options = Object.assign({
-                alpha: true,
-                stencil: false,
-                depth: false,
-                antialias: true,
+                alpha: false,
+                stencil: true,
+                depth: true,
+                antialias: false,
                 preserveDrawingBuffer: false,
 
                 vertexShader: vertexShader,

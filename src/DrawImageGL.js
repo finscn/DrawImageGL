@@ -169,7 +169,9 @@
         },
 
         createTexture: function (img) {
-            let tex = this.texCache[img.src];
+            const key = img.id || img.src;
+
+            let tex = this.texCache[key];
             if (tex) {
                 return tex;
             }
@@ -187,7 +189,7 @@
 
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 
-            this.texCache[img.src] = tex;
+            this.texCache[key] = tex;
 
             return tex;
         },
